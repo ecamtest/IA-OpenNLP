@@ -5,22 +5,13 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Map;
-import opennlp.tools.chunker.ChunkerME;
-import opennlp.tools.chunker.ChunkerModel;
 import opennlp.tools.cmdline.PerformanceMonitor;
-import opennlp.tools.cmdline.parser.ParserTool;
 import opennlp.tools.cmdline.postag.POSModelLoader;
-import opennlp.tools.namefind.NameFinderME;
-import opennlp.tools.namefind.TokenNameFinderModel;
-import opennlp.tools.parser.Parse;
-import opennlp.tools.parser.Parser;
-import opennlp.tools.parser.ParserFactory;
-import opennlp.tools.parser.ParserModel;
 import opennlp.tools.postag.POSModel;
-import opennlp.tools.postag.POSSample;
 import opennlp.tools.postag.POSTaggerME;
 import opennlp.tools.sentdetect.SentenceDetectorME;
 import opennlp.tools.sentdetect.SentenceModel;
@@ -31,7 +22,7 @@ import opennlp.tools.tokenize.WhitespaceTokenizer;
 import opennlp.tools.util.InvalidFormatException;
 import opennlp.tools.util.ObjectStream;
 import opennlp.tools.util.PlainTextByLineStream;
-import opennlp.tools.util.Span;
+import static org.apache.commons.lang3.math.NumberUtils.isParsable;
 
 /*
  * To change this license header, choose License Headers in Project Properties.
@@ -52,26 +43,19 @@ public class NLP {
     public static POSTaggerME tagger;
     public static String[] tags;
     public static String[] tokens;
-    public static HashMap itemsList;
+    public static HashMap<String, String> itemsList;
 
-    public NLP() throws FileNotFoundException, IOException {
-        listeFruits.add("pommes");
-        listeFruits.add("poires");
-        listeFruits.add("bananes");
+    public NLP() throws FileNotFoundException, IOException, URISyntaxException {
+        itemsList = new HashMap<String, String>();
         
-        itemsList = new HashMap();
+        String file = (new File(NLP.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath())).toString();
+        String path = (new File(file).getParentFile().getPath()).toString();
         
-        model = new POSModelLoader().load(new File("fr-pos.bin"));
+        model = new POSModelLoader().load(new File(path + "\\fr-pos.bin"));
         perfMon = new PerformanceMonitor(System.err, "sent");
         tagger = new POSTaggerME(model);
 
-        try (InputStream is = new FileInputStream("en-sent.bin")) {
-            sentenceDetector = new SentenceDetectorME(new SentenceModel(is));
-        } catch (Exception e) {
-            System.out.println(e);
-        }
-
-        try (InputStream is = new FileInputStream("fr-token.bin")) {
+        try (InputStream is = new FileInputStream(path + "\\fr-token.bin")) {
             tokenizer = new TokenizerME(new TokenizerModel(is));
         } catch (Exception e) {
             System.out.println(e);
@@ -79,49 +63,43 @@ public class NLP {
     }
 
     public static String Tokenize(String phrase) throws InvalidFormatException, IOException {
-        POSTag(phrase);
+        String[] tags = POSTag(phrase);
         tokens = tokenizer.tokenize(phrase);
-        
+        String item = "";
+        String price = "";
+
         for (String token : tokens) {
-            if ("prix".equals(token) || "coûtent".equals(token)) {
-                return getPrix();
+            if (isParsable(token)) {
+                price = token + " €";
+                for (int i = 0; i < tokens.length; i++) {
+                    if (tags[i].equals("DET") && !tokens[i].equals("de")) {
+                        item = tokens[i].toLowerCase() + " ";
+                    } else if (tags[i].equals("NC") && !tokens[i].equals("prix")) {
+                        item += tokens[i].toLowerCase();
+                        itemsList.put(item, price);
+                        return "C'est noté : " + item + " coûte " + price;
+                    }
+                }
             }
         }
-        return "Je ne comprends pas.";
-    }
 
-    public static String getPrix() {
-        String output = "";
-        for (String token : tokens) {
-            if (listeFruits.contains(token)) {
-                output = "Le prix des " + token + " est de " + getValue(token) + "€.";
+        if (tags[0].equals("ADJWH") || tags[0].equals("CS") || tags[0].equals("ADJWH") || tags[0].equals("ADVWH")) {
+            for (String key : itemsList.keySet()) {
+                if (phrase.contains(key)) {
+                    return "Pour " + key + " c'est " + itemsList.get(key);
+                }
             }
+            return "On ne vend pas ça ici !";
         }
-        return output;
+
+        return "Je ne comprends pas ...";
     }
 
-    public static int getValue(String token) {
-        switch (token) {
-            case "pommes":
-                return 5;
-            case "poires":
-                return 5;
-            case "bananes":
-                return 5;
-            default:
-                return 10;
-        }
-    }
-
-    public static void POSTag(String input) throws IOException {
+    public static String[] POSTag(String input) throws IOException {
 
         ObjectStream<String> lineStream = new PlainTextByLineStream(new StringReader(input));
 
-        tags = tagger.tag(WhitespaceTokenizer.INSTANCE.tokenize(lineStream.read()));
-        
-        for (String tag : tags) {
-            System.out.println(tag);
-        }
+        return tagger.tag(WhitespaceTokenizer.INSTANCE.tokenize(lineStream.read()));
     }
 
     /* public static void findName(String[] tokens) throws IOException {

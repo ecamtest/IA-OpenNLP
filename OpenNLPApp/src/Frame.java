@@ -30,7 +30,7 @@ public class Frame extends javax.swing.JFrame {
         docStyle = zoneTexte.getStyledDocument();
         style = zoneTexte.addStyle("I'm a Style", null);
         StyleConstants.setForeground(style, Color.blue);
-        docStyle.insertString(docStyle.getLength(), "Robot : Bienvenue au magasin. J'encode des prix et les restitue dans votre langue !",style);
+        docStyle.insertString(docStyle.getLength(), "Bienvenue au magasin. J'encode des prix et les restitue dans votre langue !",style);
     }
 
     /**
@@ -88,10 +88,10 @@ public class Frame extends javax.swing.JFrame {
     private void inputActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_inputActionPerformed
         try {
             StyleConstants.setForeground(style, Color.BLACK);
-            docStyle.insertString(docStyle.getLength(), "\n" + input.getText(),style);
+            docStyle.insertString(docStyle.getLength(), "\n\n" + input.getText(),style);
             
             StyleConstants.setForeground(style, Color.BLUE);
-            docStyle.insertString(docStyle.getLength(), "\nRobot : " + NLP.Tokenize(input.getText()),style);
+            docStyle.insertString(docStyle.getLength(), "\n" + NLP.Tokenize(input.getText()),style);
         } catch (IOException | BadLocationException ex) {
             Logger.getLogger(Frame.class.getName()).log(Level.SEVERE, null, ex);
         }
